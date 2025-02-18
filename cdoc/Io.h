@@ -21,8 +21,27 @@
 
 #include <cdoc/CDoc.h>
 
-#include <filesystem>
 #include <fstream>
+
+#ifdef __swift__
+// Swift compiler can't handle std::filesystem; provide a stub
+namespace std {
+namespace filesystem {
+	class path {
+		std::string p;
+	public:
+		path(std::string str = {}) : p(std::move(str)) {}
+		std::string string() const { return p; }
+		inline path& operator/=(const path &other) {
+			p += "/" + other.p;
+			return *this;
+		}
+	};
+}
+}
+#else
+	#include <filesystem>
+#endif
 
 namespace libcdoc {
 

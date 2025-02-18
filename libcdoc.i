@@ -529,6 +529,8 @@ static std::vector<unsigned char> SWIG_JavaArrayToVectorUnsignedChar(JNIEnv *jen
 // fixme: Remove this in production
 #define LIBCDOC_TESTING 1
 #define CDOC_DISABLE_MOVE(X)
+// Workaround for missing __has_include in SWIG
+#define __has_include(x) 0
 
 %include "CDoc.h"
 %include "Wrapper.h"

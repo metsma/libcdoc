@@ -37,7 +37,7 @@ struct NetworkBackend;
  *
  * An abstract base class of CDoc1 and CDoc2 readers. Provides unified interface for loading and decryption of containers.
  */
-class CDOC_EXPORT CDocReader {
+class CDOC_EXPORT SWIFT_NONCOPYABLE CDocReader {
 public:
 	virtual ~CDocReader() = default;
 
@@ -204,6 +204,10 @@ public:
 #endif
 protected:
 	explicit CDocReader(int _version) : version(_version) {};
+	CDocReader (const CDocReader&) = delete;
+	CDocReader (CDocReader&&) noexcept;
+	CDocReader& operator= (const CDocReader&) = delete;
+	CDocReader& operator= (CDocReader&&) noexcept;
 
 	void setLastError(const std::string& message) { last_error = message; }
 

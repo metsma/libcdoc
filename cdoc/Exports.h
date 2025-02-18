@@ -59,4 +59,11 @@
     Class(Class&&) noexcept = delete; \
     Class& operator=(Class&&) noexcept = delete;
 
+#if __has_include(<swift/bridging>)
+#include <swift/bridging>
+#endif
+#ifndef SWIFT_NONCOPYABLE
+#define SWIFT_NONCOPYABLE
+#endif
+
 #endif // EXPOORTS_H

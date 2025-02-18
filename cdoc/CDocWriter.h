@@ -36,7 +36,7 @@ namespace libcdoc {
  *
  * An abstract base class of CDoc1 and CDoc2 writers. Provides an unified interface for file creation and encryption.
  */
-class CDOC_EXPORT CDocWriter {
+class CDOC_EXPORT SWIFT_NONCOPYABLE CDocWriter {
 public:
 	virtual ~CDocWriter();
 
@@ -154,6 +154,10 @@ public:
     static CDocWriter *createWriter(int version, const std::string& path, Configuration *conf, CryptoBackend *crypto, NetworkBackend *network);
 protected:
 	explicit CDocWriter(int _version, DataConsumer *dst, bool take_ownership);
+	CDocWriter (const CDocWriter&) = delete;
+	CDocWriter (CDocWriter&&) noexcept;
+	CDocWriter& operator= (const CDocWriter&) = delete;
+	CDocWriter& operator= (CDocWriter&&) noexcept;
 
 	void setLastError(const std::string& message) { last_error = message; }
 

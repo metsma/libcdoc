@@ -256,7 +256,9 @@ struct CDOC_EXPORT Lock
      */
 	void setCertificate(const std::vector<uint8_t>& cert);
 
+#ifndef __swift__
     bool operator== (const Lock& other) const = default;
+#endif
 
 private:
 	std::map<Params,std::vector<uint8_t>> params;
