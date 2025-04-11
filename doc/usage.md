@@ -6,7 +6,7 @@ This document provides an overview of how to use the **libcdoc** library for enc
 
 ## Common
 
-The **libcdoc** library is built around three main components that work together to handle encryption, decryption, and key management:
+The **libcdoc** library is built around three main components that work together to handle encryption, decryption, and key management. It is compatible with Windows, macOS, and Linux for desktop environments, as well as iOS and Android for mobile platforms:
 
 1. **CryptoBackend**  
    Handles cryptographic operations such as key management, encryption, and decryption. This is the core component responsible for all cryptographic logic.
