@@ -1,303 +1,308 @@
 # Basic libcdoc Library Usage
 
+This document provides an overview of how to use the **libcdoc** library for encryption and decryption workflows.
+
+---
+
 ## Common
 
-Most methods return `result_t` status value. It can be one of the following:
+Most methods in the library return a `result_t` status value, which can indicate the following:
 
-- positive value - for read and write methods indicates success and the number of bytes read/written
-- OK (= 0) - indicates success
-- END_OF_STREAM (= -1) - indicates the end of file list in multi-file source
-- any error value (< -1) - failure
+- **Positive value**: For read and write methods, this indicates success and the number of bytes read or written.
+- **OK (= 0)**: Indicates success.
+- **END_OF_STREAM (= -1)**: Indicates the end of the file list in a multi-file source.
+- **Any error value (< -1)**: Indicates failure.
 
-The END_OF_STREAM can only be returned from `nextFile` methods. For all other methods any negative value indicates always an error.
+The `END_OF_STREAM` value is only returned by `nextFile` methods. For all other methods, any negative value always indicates an error.
+
+---
 
 ## Encryption
 
-The encryption is managed by CDocWriter object.
+Encryption is managed by the `CDocWriter` object.
 
 ### CryptoBackend
 
-Create or implement a CryptoBackend class. The default implementation is enough for public key encryption schemes. To use
-symmetric keys, at least one of the following methods has to be implemented:
+To use encryption, you must create or implement a `CryptoBackend` class. The default implementation is sufficient for public key encryption schemes. For symmetric key encryption, you must implement at least one of the following methods:
+
+#### `getSecret`
 
 ```cpp
 int getSecret(std::vector<uint8_t>& dst, unsigned int idx)
 ```
 
-The method copies into `dst` vector either the password (for PBKDF based keys) or plain AES key. It is the simplest method, but
-potentially exposes password or key in memory.
+This method copies either the password (for PBKDF-based keys) or the plain AES key into the `dst` vector. While simple, this method may expose the password or key in memory.
+
+#### `getKeyMaterial`
 
 ```cpp
 int getKeyMaterial(std::vector<uint8_t>& dst, const std::vector<uint8_t>& pw_salt, int32_t kdf_iter, unsigned int idx)
 ```
 
-The method returns the key material for a symmetric key (either password or plain key) derivation. The default implementation calls `getSecret`
-and performs PBKDF2_SHA256 if key is password-based.
+This method returns the key material for a symmetric key (either password or plain key) derivation. The default implementation calls `getSecret` and performs PBKDF2_SHA256 if the key is password-based.
+
+#### `extractHKDF`
 
 ```cpp
 result_t extractHKDF(std::vector<uint8_t>& dst, const std::vector<uint8_t>& salt, const std::vector<uint8_t>& pw_salt, int32_t kdf_iter, unsigned int idx)
 ```
 
-Calculates KEK (Key Encryption Key) pre-master from a symmetric key (either password or key-based). The default implementation calls
-`getKeyMaterial` and performs local HKDF extract.
+This method calculates the Key Encryption Key (KEK) pre-master from a symmetric key (either password or key-based). The default implementation calls `getKeyMaterial` and performs a local HKDF extract.
+
+---
 
 ### NetworkBackend
 
-If the user intends to use key-server, a NetworkBackend has to be sub-classed with the following method implementations:
+If you intend to use a key server, you must subclass `NetworkBackend` and implement the following methods:
+
+#### `getClientTLSCertificate`
 
 ```cpp
 int getClientTLSCertificate(std::vector<uint8_t>& dst)
 ```
 
-Returns the client's TLS for authentication to the key-server.
+Returns the client's TLS certificate for authentication with the key server.
+
+#### `getPeerTLSCertificates`
 
 ```cpp
-int getPeerTLSCertificates(std::vector<std::vector<uint8_t>> &dst)
+int getPeerTLSCertificates(std::vector<std::vector<uint8_t>>& dst)
 ```
 
-Returns the list of acceptable peer certificates of the key-server.
+Returns the list of acceptable peer certificates for the key server.
+
+#### `signTLS`
 
 ```cpp
-int signTLS(std::vector<uint8_t>& dst, CryptoBackend::HashAlgorithm algorithm, const std::vector<uint8_t> &digest)
+int signTLS(std::vector<uint8_t>& dst, CryptoBackend::HashAlgorithm algorithm, const std::vector<uint8_t>& digest)
 ```
 
-Sign method for TLS authentication.
+Signs the provided digest for TLS authentication.
 
-In addition to NetworkBackend methods, a Configuration subclass has to be instantiated.
+In addition to implementing `NetworkBackend`, you must also instantiate a `Configuration` subclass.
+
+---
 
 ### Configuration
 
-The Configuration class is needed to get key-server parameters. Subclass has to implement the following method:
+The `Configuration` class is required to retrieve key server parameters. You must subclass it and implement the following method:
+
+#### `getValue`
 
 ```cpp
 std::string getValue(std::string_view domain, std::string_view param)
 ```
 
-Returns configuration value for domain/param combination. For key-server:
+Returns the configuration value for a given domain/parameter combination. For key servers:
 
-- domain is the key-server ID
-- param is KEYSERVER_SEND_URL
+- **Domain**: The key server ID.
+- **Param**: `KEYSERVER_SEND_URL`.
+
+---
 
 ### CDocWriter
 
-The CDocWriter object has to be created with one of the static methods:
+The `CDocWriter` object is created using one of the following static methods:
 
 ```cpp
-CDocWriter* createWriter(int version, DataConsumer *dst, bool take_ownership, Configuration *conf, CryptoBackend *crypto, NetworkBackend *network)
-CDocWriter* createWriter(int version, std::ostream& ofs, Configuration *conf, CryptoBackend *crypto, NetworkBackend *network)
-CDocWriter* createWriter(int version, const std::string& path, Configuration *conf, CryptoBackend *crypto, NetworkBackend *network)
+CDocWriter* createWriter(int version, DataConsumer* dst, bool take_ownership, Configuration* conf, CryptoBackend* crypto, NetworkBackend* network);
+CDocWriter* createWriter(int version, std::ostream& ofs, Configuration* conf, CryptoBackend* crypto, NetworkBackend* network);
+CDocWriter* createWriter(int version, const std::string& path, Configuration* conf, CryptoBackend* crypto, NetworkBackend* network);
 ```
 
-The value of _version_ is either 1 or 2 and indicates the file format to be used: 1 for CDOC version 1 container, and 2 for CDOC version 2 container.
+- **`version`**: Specifies the file format (1 for CDOC version 1, 2 for CDOC version 2).
+- **`crypto`**: A `CryptoBackend` instance (required).
+- **`network`**: A `NetworkBackend` instance (optional, for key server use).
+- **`conf`**: A `Configuration` instance (optional, for key server use).
 
-CryptoBackend has to be supplied, NetworkBackend and Configuration may be `nullptr` if key-server is not used. CDocWriter does not take ownership of these
-objects, so they should be deleted by caller.
+The `CDocWriter` does not take ownership of these objects, so you must delete them manually.
 
-Add one or more recipients:
+#### Workflow
 
-```cpp
-int addRecipient(const Recipient& rcpt)
-```
+1. **Add Recipients**  
+   Add one or more recipients using:
 
-Start the encryption workflow:
+   ```cpp
+   int addRecipient(const Recipient& rcpt);
+   ```
 
-```cpp
-int beginEncryption()
-```
+2. **Begin Encryption**  
+   Start the encryption process:
 
-Write one or more files:
+   ```cpp
+   int beginEncryption();
+   ```
 
-```cpp
-int addFile(const std::string& name, size_t size)
-int64_t writeData(const uint8_t *src, size_t size)
-```
+3. **Write Files**  
+   Add files and write their data:
 
-Finish encryption:
+   ```cpp
+   int addFile(const std::string& name, size_t size);
+   int64_t writeData(const uint8_t* src, size_t size);
+   ```
 
-```cpp
-int finishEncryption()
-```
+4. **Finish Encryption**  
+   Finalize the encryption process:
+
+   ```cpp
+   int finishEncryption();
+   ```
+
+---
 
 ### Implementation Example
 
 ```cpp
 struct MyBackend : public libcdoc::CryptoBackend {
-    /* Only needed for symmetric keys */
     int getSecret(std::vector<uint8_t>& dst, unsigned int idx) override final {
         /* Write secret to dst */
     }
-}
+};
 
 /* In the data processing method */
 MyBackend crypto;
 
-CDocWriter *writer = createWriter(version, cdoc_filename, nullptr, &crypto, nullptr);
+CDocWriter* writer = createWriter(version, cdoc_filename, nullptr, &crypto, nullptr);
 
-/* For each recipient */
+/* Add recipients */
 writer->addRecipient(myrcpt);
 writer->beginEncryption();
 
-/* For each file */
+/* Add files */
 writer->addFile(filename, -1);
 writer->writeData(data, data_size);
 
+/* Finalize encryption */
 writer->finishEncryption();
 
 delete writer;
 ```
 
+---
+
 ## Decryption
 
-Decryption is managed by CDocReader object.
+Decryption is managed by the `CDocReader` object.
 
 ### CryptoBackend
 
-Create or implement a CryptoBackend class. To decrypt all lock types, at least the following methods have to be implemented:
+To decrypt all lock types, you must implement the following methods in a `CryptoBackend` subclass:
+
+#### `deriveECDH1`
 
 ```cpp
-int deriveECDH1(std::vector<uint8_t>& dst, const std::vector<uint8_t> &public_key, unsigned int idx)
+int deriveECDH1(std::vector<uint8_t>& dst, const std::vector<uint8_t>& public_key, unsigned int idx);
 ```
 
-Derives a shared secret from document's public key and recipient's private key by using ECDH1 algorithm.
+Derives a shared secret using the ECDH1 algorithm.
+
+#### `decryptRSA`
 
 ```cpp
-int decryptRSA(std::vector<uint8_t>& dst, const std::vector<uint8_t>& data, bool oaep, unsigned int idx)
+int decryptRSA(std::vector<uint8_t>& dst, const std::vector<uint8_t>& data, bool oaep, unsigned int idx);
 ```
 
-Decrypts data using RSA private key.
+Decrypts data using an RSA private key.
 
-Also one of the symmetric key methods listed in encryption section for symmetric key support.
+You must also implement one of the symmetric key methods listed in the encryption section for symmetric key support.
 
-### NetworkBackend
-
-It has to be implemented and supplied if server-based capsules are needed.
-
-### Configuration
-
-To decrypt server capsules, configuration has to contain the value of the following entry (domain is key-server id as in encryption):
-
-- KEYSERVER_FETCH_URL
+---
 
 ### CDocReader
 
-Whether or not a file or DataSource is CDoc container can be determined by the following methods:
+To determine whether a file or `DataSource` is a valid CDOC container, use:
 
 ```cpp
 int getCDocFileVersion(const std::string& path);
-int getCDocFileVersion(DataSource *src);
+int getCDocFileVersion(DataSource* src);
 ```
 
-Both return either the container version (1 or 2) or a negative number if the file/source is not valid container.
+Both methods return the container version (1 or 2) or a negative value if the file/source is invalid.
 
-CDocReader has to be created with one of the following static constructors:
+Create a `CDocReader` instance using one of the following static constructors:
 
 ```cpp
-CDocReader* createReader(DataSource *src, bool take_ownership, Configuration *conf, CryptoBackend *crypto, NetworkBackend *network)
-CDocReader* createReader(const std::string& path, Configuration *conf, CryptoBackend *crypto, NetworkBackend *network)
-CDocReader* createReader(std::istream& ifs, Configuration *conf, CryptoBackend *crypto, NetworkBackend *network)
+CDocReader* createReader(DataSource* src, bool take_ownership, Configuration* conf, CryptoBackend* crypto, NetworkBackend* network);
+CDocReader* createReader(const std::string& path, Configuration* conf, CryptoBackend* crypto, NetworkBackend* network);
+CDocReader* createReader(std::istream& ifs, Configuration* conf, CryptoBackend* crypto, NetworkBackend* network);
 ```
 
-CryptoBackend has to be supplied, NetworkBackend and Configuration may be `nullptr` if key-server is not used. CDocReader does not take ownership of these
-objects, so they should be deleted by caller.
+#### Workflow
 
-The list of locks in file can be obtained by method:
+1. **Get Locks**  
+   Retrieve the list of locks in the container:
 
-```cpp
-const std::vector<Lock>& getLocks()
-```
+   ```cpp
+   const std::vector<Lock>& getLocks();
+   ```
 
-The order of locks is the same as in CDoc container and the 0-based index is used to refer to the lock in decryption methods.
+2. **Decrypt FMK**  
+   Obtain the File Master Key (FMK) for the container:
 
-As a convenience method, a public-key lock can be looked up by a certificate (DER-encoded):
+   ```cpp
+   result_t getFMK(std::vector<uint8_t>& fmk, unsigned int lock_idx);
+   ```
 
-```cpp
-result_t getLockForCert(const std::vector<uint8_t>& cert)
-```
+3. **Begin Decryption**  
+   Start the decryption process:
 
-Returns the index of a lock that can be opened by the private key of the certificate, or negative number if not found.
+   ```cpp
+   result_t beginDecryption(const std::vector<uint8_t>& fmk);
+   ```
 
-Once the correct lock is chosen, the FMK (File Master Key) of the container has to be obtained:
+4. **Read Files**  
+   Read individual files:
 
-```cpp
-result_t getFMK(std::vector<uint8_t>& fmk, unsigned int lock_idx)
-```
+   ```cpp
+   result_t nextFile(std::string& name, int64_t& size);
+   result_t readData(uint8_t* dst, size_t size);
+   ```
 
-Depending on the lock type the method calls appropriate methods of CryptoBackend (and NetworkBackend) implementation to obtain and decrypt FMK.
+5. **Finish Decryption**  
+   Finalize the decryption process:
 
-After that the FMK can be used to start the encryption:
+   ```cpp
+   result_t finishDecryption();
+   ```
 
-```cpp
-result_t beginDecryption(const std::vector<uint8_t>& fmk)
-```
-
-Individual files can be read by nextFile method:
-
-```cpp
-result_t nextFile(std::string& name, int64_t& size)
-```
-
-The method returns the name and size of the next file in encrypted stream, or END_OF_STREAM if there are no more files. Due to the structure
-of CDoc container, files have to be processed sequentially - there is no way to rewind the stream.
-The name returned is the *exact filename* in encrypted stream. If the application intends to save the file with the same name, it has
-to verify that the path is safe.
-
-The actual decrypted data can be read with method:
-
-```cpp
-result_t readData(uint8_t *dst, size_t size)
-```
-
-This reads the data from current file.
-
-When all files are read, the finalizer has to be called:
-
-```cpp
-result_t finishDecryption()
-```
-
-The decrypted data should *not be used* before successful finalization because it performs the final check of data integrity. If it
-fails, the data should be assumed incomplete or corrupted.
+---
 
 ### Implementation Example
 
 ```cpp
 struct MyBackend : public libcdoc::CryptoBackend {
-    /* Elliptic curves */
-    result_t deriveECDH1(std::vector<uint8_t>& dst, const std::vector<uint8_t> &public_key, unsigned int idx) override final {
-        /* Derive shared secret and write to dst */
+    result_t deriveECDH1(std::vector<uint8_t>& dst, const std::vector<uint8_t>& public_key, unsigned int idx) override final {
+        /* Derive shared secret */
     }
-    /* RSA */
     result_t decryptRSA(std::vector<uint8_t>& dst, const std::vector<uint8_t>& data, bool oaep, unsigned int idx) override final {
-        /* Decrypt data and write to dst */
+        /* Decrypt data */
     }
-    /* Only needed for symmetric keys */
-    int getSecret(std::vector<uint8_t>& dst, unsigned int idx) override final {
-        /* Write secret to dst */
-    }
-}
+};
 
-/* In the data processing method */
 MyBackend crypto;
 
-CDocReader *reader = createReader(cdoc_filename, nullptr, &crypto, nullptr);
-/* Get list of locks */
+CDocReader* reader = createReader(cdoc_filename, nullptr, &crypto, nullptr);
+
+/* Get locks */
 auto locks = reader->getLocks();
 
-/* Choose a lock that you have a key for, then decrypt FMK */
+/* Decrypt FMK */
 std::vector<uint8_t> fmk;
 reader->getFMK(fmk, lock_idx);
 
 /* Start decryption */
-reader->beginDecryption(const std::vector<uint8_t>& fmk);
+reader->beginDecryption(fmk);
 std::string name;
 int64_t size;
-while(reader->nextFile(name, size) == libcdoc::OK) {
-    /* Allocate data buffer etc... */
+while (reader->nextFile(name, size) == libcdoc::OK) {
+    /* Read data */
     reader->readData(buffer, size);
 }
 
-/* Finish decryption */
+/* Finalize decryption */
 reader->finishDecryption();
 
 delete reader;
 ```
+
+---

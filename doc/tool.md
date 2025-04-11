@@ -1,10 +1,12 @@
 # libcdoc Tool Usage
 
-libcdoc includes command-line tool, **cdoc-tool** (**cdoc-tool.exe** in Windows) that can be used to encrypt and decrypt files, and see the locks in encrypted container.
+The **libcdoc** library includes a command-line tool, **cdoc-tool** (or **cdoc-tool.exe** on Windows), which can be used to encrypt and decrypt files, as well as view the locks in an encrypted container.
+
+---
 
 ## Encryption
 
-Common syntax for encrypting one of more files for one or more recipients is following:
+The general syntax for encrypting one or more files for one or more recipients is as follows:
 
 ```bash
 cdoc-tool encrypt --rcpt RECIPIENT [--rcpt...] [-v1] [--genlabel]
@@ -15,80 +17,90 @@ cdoc-tool encrypt --rcpt RECIPIENT [--rcpt...] [-v1] [--genlabel]
     FILE1 [FILE2 FILE3... FILEn]
 ```
 
-It is also possible to re-encrypt file by adding new recipients. In that case, use **re-encrypt** switch instead of *encrypt*. The rest of the options are same.
+To re-encrypt a file by adding new recipients, use the **re-encrypt** switch instead of **encrypt**. All other options remain the same.
 
 ### Options
 
-- `-v1` - generates CDOC ver. 1 format container instead of CDOC ver. 2 container. The option can be used only when encrypting with public-key certificate 
-(see [Recipients](#Recipients)). In all other cases, CDOC ver. 2 format container is created. Tool gives an error if the option is used with any other encryption method.
+- `-v1`  
+  Generates a CDOC version 1 format container instead of the default CDOC version 2 container. This option is only valid when encrypting with a public-key certificate (see [Recipients](#recipients)). Using this option with other encryption methods will result in an error.
 
-- `--genlabel` - causes machine-readable label generation for the lock instead of using label provided with `--rcpt` option. The machine-readable label follows the 
-format described in [5.1.2.1 KeyLabel recommendations](https://open-eid.github.io/CDOC2/1.1/02_protocol_and_cryptography_spec/ch03_container_format/#keylabel-recommendations) 
-chapter of *CDOC2 container format* specification, and differs depending on selected encryption method.
+- `--genlabel`  
+  Generates a machine-readable label for the lock instead of using the label provided with the `--rcpt` option. The generated label follows the format described in the [KeyLabel Recommendations](https://open-eid.github.io/CDOC2/1.1/02_protocol_and_cryptography_spec/ch03_container_format/#keylabel-recommendations) section of the *CDOC2 Container Format* specification.
 
-- `--library` - path to the PKCS11 library that handles smart-card related operations. The option is needed only in MacOS and Linux when `p11sk` or `p11pk` encryption 
-method is used (see [Recipients](#Recipients)). In Windows the tool uses API provided by Windows. In all other cases the option is ignored.
+- `--library PKCS11_LIBRARY`  
+  Specifies the path to the PKCS11 library for handling smart-card operations. This option is required on macOS and Linux when using the `p11sk` or `p11pk` encryption methods (see [Recipients](#recipients)). On Windows, the tool uses the native Windows API, and this option is ignored.
 
-- `--server ID URL(s)` - specifies a key or share server. The recipient key will be stored in server instead of container. For key server the URL is either fetch 
-or send URL. For share server it is comma-separated list of share server URLs.
+- `--server ID URL(s)`  
+  Specifies a key or share server. The recipient key will be stored on the server instead of in the container. For a key server, the URL is either the fetch or send URL. For a share server, it is a comma-separated list of share server URLs.
 
-- `--accept SERVER_CERT_FILENAME` - path to server's TLS certificate file. The certificate must be in DER format. Needed only if a key or shared server is used, i.e. 
-`--server` option is specified.
+- `--accept SERVER_CERT_FILENAME`  
+  Specifies the path to the server's TLS certificate file in DER format. This option is required if a key or share server is used (i.e., when the `--server` option is specified).
 
-- `--out OUTPUTFILE` - CDOC file name to be created. This option is mandatory. If the file name is provided without path then the file is created in current working 
-directory.
+- `--out OUTPUTFILE`  
+  Specifies the name of the output CDOC file. This option is mandatory. If no path is provided, the file is created in the current working directory.
 
-- `FILE` - one or more files to be encrypted. At least one file must be provided.
+- `FILE`  
+  Specifies one or more files to be encrypted. At least one file must be provided.
 
 ### Recipients
 
-One ore more recipients can be specified, each with its own encryption method. At least one recipient must be specified.
+One or more recipients must be specified, each with its own encryption method. At least one recipient is required.
 
 | Form | Description |
-| ---    | ---         |
-| `[label]:cert:CERTIFICATE_HEX` | Encryption public-key from certificate. The certificate must be provided as hex-encoded string |
-| `[label]:skey:SECRET_KEY_HEX` | Symmetric encryption with AES key. The key must be provided as hex-encoded string |
-| `[label]:pkey:SECRET_KEY_HEX` | Encryption with public-key. The key must be provided as hex-encoded string |
-| `[label]:pfkey:PUB_KEY_FILE` | Encryption with public-key where the key is provided via path to DER file with EC (**secp384r1** curve) public key |
-| `[label]:pw:PASSWORD` | Encryption with derive key using PWBKDF |
-| `[label]:p11sk:SLOT:[PIN]:[PKCS11 ID]:[PKCS11 LABEL]` | Encryption with AES key from PKCS11 module |
-| `[label]:p11pk:SLOT:[PIN]:[PKCS11 ID]:[PKCS11 LABEL]` | Encryption with public key from PKCS11 module |
-| `[label]:share:ID` | use key share server with given ID (personal code) |
+| --- | --- |
+| `[label]:cert:CERTIFICATE_HEX` | Encrypts using a public key from a certificate provided as a hex-encoded string. |
+| `[label]:skey:SECRET_KEY_HEX` | Encrypts using a symmetric AES key provided as a hex-encoded string. |
+| `[label]:pkey:SECRET_KEY_HEX` | Encrypts using a public key provided as a hex-encoded string. |
+| `[label]:pfkey:PUB_KEY_FILE` | Encrypts using a public key from a DER file (EC **secp384r1** curve). |
+| `[label]:pw:PASSWORD` | Encrypts using a password-derived key (PWBKDF). |
+| `[label]:p11sk:SLOT:[PIN]:[PKCS11 ID]:[PKCS11 LABEL]` | Encrypts using an AES key from a PKCS11 module. |
+| `[label]:p11pk:SLOT:[PIN]:[PKCS11 ID]:[PKCS11 LABEL]` | Encrypts using a public key from a PKCS11 module. |
+| `[label]:share:ID` | Encrypts using a key share server with the specified ID (e.g., a personal code). |
 
-If the `label` is omitted then the `--genlabel` option must be specified at command-line. Otherwise, the tool generates an error. If both, `label` and `--genlabel` 
-option are provided then depending on encryption method, the `label` may be ignored, but may be also used a part of machine-readable label, like in encrypting with 
-symmetric key and password case. Refer [Appendix D](https://open-eid.github.io/CDOC2/1.1/02_protocol_and_cryptography_spec/appendix_d_keylabel/) section of 
-*CDOC2 container format* specification for examples of machine-readable key-labels.
+If the `label` is omitted, the `--genlabel` option must be specified. Otherwise, the tool will generate an error. If both `label` and `--genlabel` are provided, the behavior depends on the encryption method. Refer to [Appendix D](https://open-eid.github.io/CDOC2/1.1/02_protocol_and_cryptography_spec/appendix_d_keylabel/) of the *CDOC2 Container Format* specification for examples.
 
 ### Examples
 
-In all examples file *abc.txt* from user's *Documents* directory is used a source file to be encrypted. The result container is created in current working directory 
-where also *cdoc-tool* executable is located.
+1. **Encrypt a file with a password**  
+   Encrypt the file `abc.txt` with the password `Test123`. The resulting container is `abc.txt-pw.cdoc`.
 
-Encrypt the file with password *Test123*. In result, *abc.txt-pw.cdoc* is created.
+   ```bash
+   ./cdoc-tool encrypt --rcpt Test:pw:Test123 --out abc.txt-pw.cdoc ~/Documents/abc.txt
+   ```
 
-    ./cdoc-tool encrypt --rcpt Test:pw:Test123 --out abc.txt-pw.cdoc ~/Documents/abc.txt
+2. **Encrypt a file with a public key from an ID card**  
+   Encrypt the file `abc.txt` using a public key from an Estonian ID card. The resulting container is `abc.txt-p11pk.cdoc`.
 
-Encrypt the file with public-key from Estonian ID card and machine-readable label. In result, *abc.txt-p11pk.cdoc* is created.
+   ```bash
+   ./cdoc-tool encrypt --rcpt :p11pk:0:::Isikutuvastus --genlabel --out abc.txt-p11pk.cdoc --library /opt/homebrew/lib/opensc-pkcs11.so ~/Documents/abc.txt
+   ```
 
-    ./cdoc-tool encrypt --rcpt :p11pk:0:::Isikutuvastus --genlabel --out abc.txt-p11pk.cdoc --library /opt/homebrew/lib/opensc-pkcs11.so ~/Documents/abc.txt
+3. **Encrypt a file with a public key from a file**  
+   Encrypt the file `abc.txt` using a public key from the file `ec-secp384r1-pub.der`. The resulting container is `abc.txt-pfkey.cdoc`.
 
-Encrypt the file with public-key from file *ec-secp384r1-pub.der*, located in current working directory. The key file can be located also in any other directory,
-but in that case full path must be specified. In result, *abc.txt-pfkey.cdoc* is created.
+   ```bash
+   ./cdoc-tool encrypt --rcpt :pfkey:ec-secp384r1-pub.der --genlabel --out abc.txt-pfkey.cdoc ~/Documents/abc.txt
+   ```
 
-    ./cdoc-tool encrypt --rcpt :pfkey:ec-secp384r1-pub.der --genlabel --out abc.txt-pfkey.cdoc ~/Documents/abc.txt
+4. **Encrypt a file with an AES key**  
+   Encrypt the file `abc.txt` using an AES key provided via the command line. The resulting container is `abc.txt-aes.cdoc`.
 
-Encrypt the file with AES key provided via command-line. Use provided label *Test* as a part of machine-readable key-label. In result, *abc.txt-aes.cdoc* is created.
+   ```bash
+   ./cdoc-tool encrypt --rcpt Test:skey:E165475C6D8B9DD0B696EE2A37D7176DFDF4D7B510406648E70BAE8E80493E5E --genlabel --out abc.txt-aes.cdoc ~/Documents/abc.txt
+   ```
 
-    ./cdoc-tool encrypt --rcpt Test:skey:E165475C6D8B9DD0B696EE2A37D7176DFDF4D7B510406648E70BAE8E80493E5E --genlabel --out abc.txt-aes.cdoc ~/Documents/abc.txt
+5. **Encrypt a file with a public key from a key server**  
+   Encrypt the file `abc.txt` using a public key from the RIA test key server. **A VPN connection to RIA must be established!** The resulting container is `abc.txt-ks.cdoc`.
 
-Encrypt the file with public-key from RIA test key server. **VPN connection to RIA must be established!** In result, *abc.txt-ks.cdoc* is created.
+   ```bash
+   ./cdoc-tool encrypt --rcpt Test:p11pk:0:::Isikutuvastus --library /opt/homebrew/lib/opensc-pkcs11.so --server 00000000-0000-0000-0000-000000000000 https://cdoc2-keyserver.test.riaint.ee:8443 --accept keyserver-cert.der --out abc.txt-ks.cdoc ~/Documents/abc.txt
+   ```
 
-    ./doc-tool encrypt --rcpt Test:p11pk:0:::Isikutuvastus --library /opt/homebrew/lib/opensc-pkcs11.so --server 00000000-0000-0000-0000-000000000000 https://cdoc2-keyserver.test.riaint.ee:8443 --accept keyserver-cert.der --out abc.txt-ks.cdoc ~/Documents/abc.txt
+---
 
 ## Decryption
 
-Syntax for decrypting of an encrypted file differs dramatically from encryption and is following:
+The syntax for decrypting an encrypted file is as follows:
 
 ```bash
 cdoc-tool decrypt OPTIONS FILE [OUTPUT_DIR]
@@ -96,51 +108,84 @@ cdoc-tool decrypt OPTIONS FILE [OUTPUT_DIR]
 
 ### Options
 
-Following options are supported:
+- `--label LABEL`  
+  Specifies the lock label of the CDOC container. Either the label or the label's index must be provided.
 
-- `--label LABEL` - CDOC container's lock label. Either the label or label's index must be provided.
-- `--label_idx INDEX` - CDOC container's lock 1-based label index. Either the label or label's index must be provided.
-- `--slot SLOT` - PKCS11 slot number. Usually 0.
-- `--password PASSWORD` - lock's password if the file was encrypted with password.
-- `--secret SECRET` - secret phrase (AES key) if the file was encrypted with symmetric key.
-- `--pin PIN` - PKCS11 (smart-card's) pin code.
-- `--key-id` - PKCS11 key ID.
-- `--key-label` - PKCS11 key label.
-- `--library PKCS11_LIBRARY` - path to the PKCS11 library. Same as in encryption case.
-- `--server ID URL(s)` - specifies a key or share server. Same as in encryption case.
-- `--accept SERVER_CERT_FILENAME` - path to server's TLS certificate file. Same as in encryption case.
-- `FILE` - encrypted file to be decrypted.
-- `OUTPUT_DIR` - output directory where the files are decrypted. If not specified then current working directory is used. If there is already a file with same name 
-then it is overwritten.
+- `--label_idx INDEX`  
+  Specifies the 1-based index of the lock label in the CDOC container. Either the label or the label's index must be provided.
+
+- `--slot SLOT`  
+  Specifies the PKCS11 slot number (usually `0`).
+
+- `--password PASSWORD`  
+  Specifies the password if the file was encrypted with a password.
+
+- `--secret SECRET`  
+  Specifies the secret phrase (AES key) if the file was encrypted with a symmetric key.
+
+- `--pin PIN`  
+  Specifies the PKCS11 (smart card) PIN code.
+
+- `--key-id`  
+  Specifies the PKCS11 key ID.
+
+- `--key-label`  
+  Specifies the PKCS11 key label.
+
+- `--library PKCS11_LIBRARY`  
+  Specifies the path to the PKCS11 library. This is the same as in the encryption case.
+
+- `--server ID URL(s)`  
+  Specifies a key or share server. This is the same as in the encryption case.
+
+- `--accept SERVER_CERT_FILENAME`  
+  Specifies the path to the server's TLS certificate file. This is the same as in the encryption case.
+
+- `FILE`  
+  Specifies the encrypted file to be decrypted.
+
+- `OUTPUT_DIR`  
+  Specifies the output directory where the decrypted files will be saved. If not specified, the current working directory is used. Existing files with the same name will be overwritten.
 
 ### Examples
 
-In all examples the same container file is used as the file to be decrypted that was created previously in encryption examples.
+1. **Decrypt a file with a password**  
+   Decrypt the file `abc.txt-pw.cdoc` using the key label `Test` and password `Test123`.
 
-Decrypt file abc.txt-pw.cdoc with key label *Test* and password *Test123*.
+   ```bash
+   ./cdoc-tool decrypt --label Test --password Test123 abc.txt-pw.cdoc
+   ```
 
-    ./cdoc-tool decrypt --label Test --password Test123 abc.txt-pw.cdoc
+2. **Decrypt a file with an ID card**  
+   Decrypt the file `abc.txt-p11pk.cdoc` using the key label index `1` and an Estonian ID card with PIN code `1234`.
 
-Decrypt file *abc.txt-p11pk.cdoc* with key label index 1 and Estonian ID card by using PIN code *1234*.
+   ```bash
+   ./cdoc-tool decrypt --label_idx 1 --pin 1234 --slot 0 --key-label Isikutuvastus --library /opt/homebrew/lib/opensc-pkcs11.so abc.txt-p11pk.cdoc
+   ```
 
-    ./cdoc-tool decrypt --label_idx 1 --pin 1234 --slot 0 --key-label Isikutuvastus --library /opt/homebrew/lib/opensc-pkcs11.so abc.txt-p11pk.cdoc
+3. **Decrypt a file with a key server**  
+   Decrypt the file `abc.txt-ks.cdoc` using the key label `Test` and a private key from the RIA test key server. **A VPN connection to RIA must be established!**
 
-Decrypt file *abc.txt-ks.cdoc* with key label *Test* and private-key from RIA test key server. **VPN connection to RIA must be established!** PIN code *1234* is used.
+   ```bash
+   ./cdoc-tool decrypt --library /opt/homebrew/lib/opensc-pkcs11.so --server 00000000-0000-0000-0000-000000000000 https://cdoc2-keyserver.test.riaint.ee:8444 --accept keyserver-cert.der --label Test --slot 0 --pin 1234 --key-label Isikutuvastus abc.txt-ks.cdoc out
+   ```
 
-    ./cdoc-tool decrypt --library /opt/homebrew/lib/opensc-pkcs11.so --server 00000000-0000-0000-0000-000000000000 https://cdoc2-keyserver.test.riaint.ee:8444 --accept keyserver-cert.der --label Test --slot 0 --pin 1234 --key-label Isikutuvastus abc.txt-ks.cdoc out
+---
 
-## See the Locks
+## Viewing Locks
 
-Syntax for seeing the locks that are in container is following:
+To view the locks in a container, use the following syntax:
 
 ```bash
 cdoc-tool locks FILE
 ```
 
-The command does not have any options and only argument is the encrypted container file, which locks will be displayed.
+This command does not have any options. The only argument is the encrypted container file whose locks will be displayed.
 
 ### Example
 
-Displays the locks of *abc.txt-aes.cdoc* file:
+Display the locks of the file `abc.txt-aes.cdoc`:
 
-    ./cdoc-tool locks abc.txt-aes.cdoc
+```bash
+./cdoc-tool locks abc.txt-aes.cdoc
+```
