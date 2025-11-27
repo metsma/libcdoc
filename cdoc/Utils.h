@@ -48,7 +48,7 @@ static auto encodeName(std::string_view path)
     return std::u8string_view(reinterpret_cast<const char8_t*>(path.data()), path.size());
 }
 
-std::string toBase64(const uint8_t *data, size_t len);
+CDOC_EXPORT std::string toBase64(const uint8_t *data, size_t len);
 
 static std::string toBase64(const std::vector<uint8_t> &data) {
     return toBase64(data.data(), data.size());
@@ -59,7 +59,9 @@ std::vector<uint8_t> fromBase64(std::string_view data);
 template <typename F>
 static std::string toHex(const F &data)
 {
-    std::stringstream os;
+	std::string tmp;
+	tmp.reserve(data.size() * 2);
+    std::ostringstream os(std::move(tmp));
     os << std::hex << std::uppercase << std::setfill('0');
     for(const auto &i: data)
         os << std::setw(2) << (static_cast<int>(i) & 0xFF);

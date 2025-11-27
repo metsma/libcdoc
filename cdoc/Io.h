@@ -217,12 +217,14 @@ struct CDOC_EXPORT IStreamSource : public DataSource {
         if (_owned) delete _ifs;
 	}
 
-    result_t seek(size_t pos) override {
+    result_t seek(size_t pos) override try {
         if(_ifs->bad()) return INPUT_STREAM_ERROR;
         _ifs->clear();
 		_ifs->seekg(pos);
         return _ifs->bad() ? INPUT_STREAM_ERROR : OK;
-	}
+	} catch(...) {
+        return INPUT_STREAM_ERROR;
+    }
 
     result_t read(uint8_t *dst, size_t size) noexcept override try {
 		_ifs->read((char *) dst, size);

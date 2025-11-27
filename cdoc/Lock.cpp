@@ -37,6 +37,13 @@ Lock::getString(Params key) const
     return {};
 }
 
+std::string_view
+Lock::getStringView(Params key) const
+{
+	const std::vector<uint8_t>& bytes = params.at(key);
+	return std::string_view((const char *) bytes.data(), bytes.size());
+}
+
 int32_t
 Lock::getInt(Params key) const
 {

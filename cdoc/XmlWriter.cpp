@@ -96,10 +96,11 @@ int64_t XMLWriter::writeBase64Element(NS ns, const char *name, const std::functi
         return rv;
 
     struct Base64Consumer : public DataConsumer {
-        xmlTextWriterPtr w;
+        XMLWriter &w;
+        const NS &ns;
         std::array<uint8_t, 3> buf {}; // buffer up to 2 leftover bytes
         size_t bufSize = 0;
-        Base64Consumer(xmlTextWriterPtr _w) : w(_w) {}
+        Base64Consumer(XMLWriter &_w, const NS &_ns) : w(_w), ns(_ns) {}
         result_t write(const uint8_t *src, size_t size) noexcept final {
             if(!src || size == 0)
                 return OK;
@@ -112,7 +113,7 @@ int64_t XMLWriter::writeBase64Element(NS ns, const char *name, const std::functi
                 if (bufSize < 3) {
                     return result_t(size);
                 }
-                if (xmlTextWriterWriteBase64(w, reinterpret_cast<const char*>(buf.data()), 0, buf.size()) == -1)
+                if (xmlTextWriterWriteBase64(w.w.get(), reinterpret_cast<const char*>(buf.data()), 0, buf.size()) == -1)
                     return IO_ERROR;
                 bufSize = 0;
             }
@@ -120,7 +121,7 @@ int64_t XMLWriter::writeBase64Element(NS ns, const char *name, const std::functi
             // Write largest contiguous chunk with length multiple of 3
             size_t remaining = size - pos;
             if(size_t fullTriples = remaining - (remaining % 3); fullTriples > 0) {
-                if (xmlTextWriterWriteBase64(w, reinterpret_cast<const char*>(src), pos, fullTriples) == -1)
+                if (xmlTextWriterWriteBase64(w.w.get(), reinterpret_cast<const char*>(src), pos, fullTriples) == -1)
                     return IO_ERROR;
                 pos += fullTriples;
             }
@@ -135,19 +136,17 @@ int64_t XMLWriter::writeBase64Element(NS ns, const char *name, const std::functi
         result_t close() noexcept final {
             if (bufSize > 0) {
                 // write remaining 1..2 bytes so base64 padding is applied only at the end
-                if(xmlTextWriterWriteBase64(w, reinterpret_cast<const char*>(buf.data()), 0, bufSize) == -1)
+                if(xmlTextWriterWriteBase64(w.w.get(), reinterpret_cast<const char*>(buf.data()), 0, bufSize) == -1)
                     return IO_ERROR;
             }
             bufSize = 0;
-            return OK;
+            return w.writeEndElement(ns);
         }
         bool isError() noexcept final { return false; }
-    } base64Consumer {w.get()};
+    } base64Consumer {*this, ns};
     if(auto rv = f(base64Consumer); rv < 0)
         return rv;
-    if(auto rv = base64Consumer.close(); rv < 0)
-        return rv;
-    return writeEndElement(ns);
+    return base64Consumer.close();
 }
 
 int64_t XMLWriter::writeBase64Element(NS ns, const char *name, const std::vector<xmlChar> &data, const std::map<const char *, std::string> &attr)

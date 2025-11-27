@@ -157,6 +157,12 @@ struct CDOC_EXPORT Lock
      */
     std::string getString(Params key) const;
     /**
+     * @brief get lock parameter as string_view
+     * @param key a parameter type
+     * @return the parameter value
+     */
+    std::string_view getStringView(Params key) const;
+    /**
      * @brief get lock parameter as integer
      * @param key a parameter type
      * @return the parameter value

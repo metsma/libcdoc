@@ -456,8 +456,7 @@ libcdoc::NetworkBackend::fetchKey (std::vector<uint8_t>& dst, const std::string&
         return NETWORK_ERROR;
     }
     error = {};
-    std::string ks = v.get<std::string>();
-    dst = fromBase64(ks);
+    dst = fromBase64(v.get<std::string>());
 
     return libcdoc::OK;
 }
@@ -536,14 +535,14 @@ libcdoc::NetworkBackend::fetchShare(ShareInfo& share, const std::string& url, co
         error = FORMAT("No 'share' in response");
         return NETWORK_ERROR;
     }
-    std::string share64 = v.get<std::string>();
+    const std::string &share64 = v.get<std::string>();
     LOG_DBG("Share64: {}", share64);
     v = rsp_json.get("recipient");
     if (!v.is<std::string>()) {
         error = FORMAT("No 'recipient' in response");
         return NETWORK_ERROR;
     }
-    std::string recipient = v.get<std::string>();
+    const std::string &recipient = v.get<std::string>();
     std::vector<uint8_t> shareval = fromBase64(share64);
     if (shareval.size() != 32) {
         error = FORMAT("Invalid share size: expected 32, got {}", shareval.size());
@@ -653,8 +652,8 @@ waitForResult(SIDResponse& dst, httplib::SSLClient& cli, const std::string& path
             LOG_WARN("{}", error);
             return NetworkBackend::NETWORK_ERROR;
         }
-        std::string str = v.get<std::string>();
-        if (str == "RUNNING") {
+        if (const std::string &str = v.get<std::string>();
+            str == "RUNNING") {
             // Pause for 0.5 seconds and repeat
             std::chrono::milliseconds duration(500);
             std::this_thread::sleep_for(duration);
@@ -682,7 +681,7 @@ waitForResult(SIDResponse& dst, httplib::SSLClient& cli, const std::string& path
             LOG_WARN("{}", error);
             return NetworkBackend::NETWORK_ERROR;
         }
-        str = w.get<std::string>();
+        const std::string &str = w.get<std::string>();
         result = parseMIDSIDResult(str);
         if (result == UNSPECIFIED_ERROR) {
             // Unknown result
@@ -1008,7 +1007,7 @@ libcdoc::NetworkBackend::signMID(std::vector<uint8_t>& dst, std::vector<uint8_t>
         LOG_WARN("Invalid Mobile ID response");
         return NetworkBackend::NETWORK_ERROR;
     }
-    std::string sessionID  = w.get<std::string>();
+    const std::string &sessionID  = w.get<std::string>();
     LOG_DBG("SessionID: {}", sessionID);
 
     SIDResponse sidrsp;
