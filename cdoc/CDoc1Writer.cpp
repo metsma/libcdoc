@@ -221,11 +221,10 @@ CDoc1Writer::encrypt(libcdoc::MultiDataSource& src, const std::vector<libcdoc::R
 {
     if(keys.empty())
         return WORKFLOW_ERROR;
-    rcpts = keys;
-    RET_ERROR(beginEncryption());
 	int n_components = src.getNumComponents();
 	bool use_ddoc = (n_components > 1) || (n_components == libcdoc::NOT_IMPLEMENTED);
-    RET_ERROR(d->writeDocument(use_ddoc, keys, [&](DataConsumer &dst) -> int64_t {
+    auto p = std::make_unique<Private>(*dst, last_error);
+    RET_ERROR(p->writeDocument(use_ddoc, keys, [&](DataConsumer &dst) -> int64_t {
         std::string name;
         int64_t size;
         if(use_ddoc) {
@@ -233,20 +232,20 @@ CDoc1Writer::encrypt(libcdoc::MultiDataSource& src, const std::vector<libcdoc::R
             result_t result;
             for (result = src.next(name, size); result == OK; result = src.next(name, size)) {
                 RET_ERROR(ddoc.addFile(name, "application/octet-stream", size, src));
-                d->files.push_back({name, size_t(size)});
+                p->files.push_back({name, size_t(size)});
             }
             if(result != END_OF_STREAM)
                 return result;
         } else {
             RET_ERROR(src.next(name, size));
             if(auto rv = src.readAll(dst); rv >= 0)
-                d->files.push_back({std::move(name), size_t(rv)});
+                p->files.push_back({std::move(name), size_t(rv)});
             else
                 return rv;
         }
         return OK;
     }));
-    d.reset();
+    p.reset();
     if (owned) return dst->close();
     return OK;
 }
