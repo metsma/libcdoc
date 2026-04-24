@@ -61,10 +61,10 @@ Lock::setInt(Params key, int32_t val)
 	params[key] = std::move(bytes);
 }
 
-std::map<std::string, std::string>
+std::map<std::string, std::string,std::less<>>
 Lock::parseLabel(const std::string& label)
 {
-    std::map<std::string, std::string> parsed_label;
+    std::map<std::string, std::string,std::less<>> parsed_label;
     // Check if provided label starts with the machine generated label prefix.
     if (!label.starts_with(CDoc2::LABELPREFIX)) {
         return parsed_label;

@@ -238,7 +238,7 @@ struct CDOC_EXPORT Lock
      * @param label the label
      * @return a map of key-value pairs
      */
-    static std::map<std::string, std::string> parseLabel(const std::string& label);
+    static std::map<std::string, std::string, std::less<>> parseLabel(const std::string& label);
 
     bool operator== (const Lock& other) const noexcept = default;
 

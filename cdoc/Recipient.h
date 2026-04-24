@@ -238,7 +238,7 @@ struct CDOC_EXPORT Recipient {
 protected:
 	Recipient(Type _type) : type(_type) {};
 private:
-    std::map<std::string,std::string> lbl_parts;
+    std::map<std::string,std::string,std::less<>> lbl_parts;
 };
 
 } // namespace libcdoc

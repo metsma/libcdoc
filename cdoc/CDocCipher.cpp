@@ -780,7 +780,7 @@ void CDocCipher::Locks(const char* file)
     restoreFlags rf(cout);
     int lock_id = 1;
     for (const Lock& lock : rdr->getLocks()) {
-        map<string, string> parsed_label(Lock::parseLabel(lock.label));
+        auto parsed_label = Lock::parseLabel(lock.label);
         if (parsed_label.empty()) {
             // Human-readable label
             cout << lock_id << ": " << lock.label << endl;
@@ -788,16 +788,16 @@ void CDocCipher::Locks(const char* file)
             // Machine generated label
             // Find the longest field
             int maxFieldLength = 0;
-            for (map<string, string>::const_reference pair : parsed_label) {
-                if (pair.first.size() > maxFieldLength) {
-                    maxFieldLength = static_cast<int>(pair.first.size());
+            for (const auto& [key, value] : parsed_label) {
+                if (key.size() > maxFieldLength) {
+                    maxFieldLength = static_cast<int>(key.size());
                 }
             }
 
             // Output the fields with their values
             cout << lock_id << ":" << lock.label << endl;
-            for (map<string, string>::const_reference pair : parsed_label) {
-                cout << "  " << setw(maxFieldLength + 1) << left << pair.first << ": " << pair.second << endl;
+            for (const auto& [key, value] : parsed_label) {
+                cout << "  " << setw(maxFieldLength + 1) << left << key << ": " << value << endl;
             }
 
             cout << endl;
