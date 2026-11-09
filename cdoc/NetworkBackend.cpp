@@ -19,7 +19,9 @@
 #define CPPHTTPLIB_OPENSSL_SUPPORT
 #include "httplib.h"
 
+#include <algorithm>
 #include <array>
+#include <cctype>
 #include <chrono>
 
 #if defined(_WIN32) || defined(_WIN64)
@@ -218,6 +220,19 @@ setPeerCertificates(httplib::SSLClient& cli, libcdoc::NetworkBackend *network, c
 }
 
 //
+// Parse a JSON response, rejecting anything after the value
+//
+static std::string
+parseJson(picojson::value& out, const std::string& body)
+{
+    std::string err;
+    auto end = picojson::parse(out, body.cbegin(), body.cend(), &err);
+    if (err.empty() && std::any_of(end, body.cend(), [](char c) { return !std::isspace(static_cast<unsigned char>(c)); }))
+        err = "unexpected data after the JSON value";
+    return err;
+}
+
+//
 // Log why a request failed. httplib does not report TLS errors, they stay in the OpenSSL error queue.
 //
 static void
@@ -229,6 +244,19 @@ logRequestError(const httplib::Result& res)
         ERR_error_string_n(err, buf.data(), buf.size());
         LOG_DBG("    {}", buf.data());
     }
+}
+
+static libcdoc::result_t
+requestError(httplib::SSLClient& cli, const std::string& path, const httplib::Result& res)
+{
+    logRequestError(res);
+    // The server did answer, so an oversized response is a server error
+    if (res.error() == httplib::Error::ExceedMaxPayloadSize) {
+        error = FORMAT("Response from https://{}:{}{} exceeds {} bytes", cli.host(), cli.port(), path, CDOC_MAX_RESPONSE_SIZE);
+        return libcdoc::NetworkBackend::SERVER_ERROR;
+    }
+    error = FORMAT("Cannot connect to https://{}:{}{}: {}", cli.host(), cli.port(), path, httplib::to_string(res.error()));
+    return libcdoc::NetworkBackend::NETWORK_ERROR;
 }
 
 libcdoc::result_t
@@ -305,11 +333,8 @@ httpPost(httplib::SSLClient& cli, const std::string& path, httplib::Headers& hdr
         LOG_TRACE("    Header {}: {}", h.first, h.second);
     }
     httplib::Result res = cli.Post(path, hdrs, req, "application/json");
-    if (!res) {
-        logRequestError(res);
-        error = FORMAT("Cannot connect to https://{}:{}{}: {}", cli.host(), cli.port(), path, httplib::to_string(res.error()));
-        return libcdoc::NetworkBackend::NETWORK_ERROR;
-    }
+    if (!res)
+        return requestError(cli, path, res);
     int status = res->status;
     LOG_DBG("Status: {}", status);
     LOG_TRACE("  Body: {}", res->body);
@@ -337,11 +362,8 @@ httpGet(httplib::SSLClient& cli, httplib::Headers& hdrs, const std::string& path
         LOG_TRACE("    Header {}: {}", h.first, h.second);
     }
     httplib::Result res = cli.Get(path, hdrs);
-    if (!res) {
-        logRequestError(res);
-        error = FORMAT("Cannot connect to https://{}:{}{}: {}", cli.host(), cli.port(), path, httplib::to_string(res.error()));
-        return libcdoc::NetworkBackend::NETWORK_ERROR;
-    }
+    if (!res)
+        return requestError(cli, path, res);
     int status = res->status;
     if (httpStatus) *httpStatus = status;
     LOG_DBG("Status: {}", status);
@@ -532,22 +554,22 @@ libcdoc::NetworkBackend::fetchKey (std::vector<uint8_t>& dst, const std::string&
         return result;
     }
 
+    // The server answered, so a malformed response is a server error, not a network error
     picojson::value rsp_json;
-    std::string parse_err = picojson::parse(rsp_json, rsp.body);
-    if (!parse_err.empty()) {
+    if (std::string parse_err = parseJson(rsp_json, rsp.body); !parse_err.empty()) {
         error = FORMAT("JSON parse error: {}", parse_err);
         LOG_ERROR("{}", error);
-        return NETWORK_ERROR;
+        return SERVER_ERROR;
     }
 
     libcdoc::result_t rv = libcdoc::OK;
     std::string ks = getJsonString(rsp_json, "ephemeral_key_material", rv);
-    if (rv != libcdoc::OK) return NETWORK_ERROR;
+    if (rv != libcdoc::OK) return SERVER_ERROR;
     dst = fromBase64(ks);
     if (dst.empty()) {
         error = FORMAT("Invalid base64 in 'ephemeral_key_material'");
         LOG_WARN("{}", error);
-        return NETWORK_ERROR;
+        return SERVER_ERROR;
     }
 
     return libcdoc::OK;
